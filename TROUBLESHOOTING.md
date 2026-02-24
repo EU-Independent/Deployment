@@ -24,3 +24,15 @@
 - Re-running after edits
   - Use `./scripts/clean.sh` to stop containers, remove generated keystores, and optionally restore files with git.
 
+- Connector artifact data endpoint returns wrong `Content-Type` or unreadable bytes
+  - Symptom: `GET /connector/api/artifacts/<uuid>/data` returns JSON body but `Content-Type: text/html;charset=UTF-8`, or clients receive binary/compressed-looking output.
+  - Nginx fix in this repo: a dedicated `location /connector/api/` now disables API mutation/caching/compression behavior and forwards upstream headers for API responses.
+  - Cloudflare fix (for `ds.murska-sobota.si`): add a rule for `/connector/api/*` with:
+    - Cache: Bypass
+    - Disable Auto Minify
+    - Disable Rocket Loader
+    - Disable HTML transforms/optimizations
+    - If needed, disable Brotli on this path
+  - Verify headers:
+    - `curl -skI -H "Authorization: Basic <...>" "https://<host>/connector/api/artifacts/<uuid>/data" | egrep -i 'HTTP/|content-type|content-encoding|server|cf-cache-status'`
+    - `curl -sk -H "Authorization: Basic <...>" -H "Accept-Encoding: identity" "https://<host>/connector/api/artifacts/<uuid>/data" | head -c 200; echo`
